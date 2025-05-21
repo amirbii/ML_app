@@ -5,24 +5,26 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
 from PIL import Image
 
+api_k = {"username": "amirbi",
+         "key": "cce234fe761dad172e451eb0141f1143"}
 
-def apply_inline_styles():
-    css = """
-    * {
-     direction: rtl;
-    #     .st-emotion-cache-13ln4jf{
-    # max-width: 100% !important;
-    # }
-    }"""
+# def apply_inline_styles():
+# css = """
+# * {
+#  direction: rtl;
+#     .st-emotion-cache-13ln4jf{
+# max-width: 100% !important;.
+# }
+# }"""
 
-    st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
+# st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
 
 
-apply_inline_styles()
-
+# apply_inline_styles()
+#####
 st.title("بارگذاری دیتاست 📁")
 
-method = st.radio("روش بارگذاری:", ["📤 CSV", "🌐 Github or kaggle"])
+method = st.radio("روش بارگذاری:", ["📤 CSV", "🌐Github", "🌐kaggle"])
 
 df = None
 
@@ -31,21 +33,27 @@ if method == "📤 CSV":
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
         st.success("✅ فایل با موفقیت بارگذاری شد")
-elif method == "🌐 Github or kaggle":
+
+elif method == "🌐Github":
     url = st.text_input("link")
     if st.button("📥 بارگذاری"):
-
         try:
             df = pd.read_csv(url)
             st.success("✅ فایل با موفقیت بارگذاری شد")
         except Exception as e:
             st.error(f"❌ خطا در بارگذاری فایل: {e}")
+elif method == "🌐kaggle":
+    url = st.text_input("link")
+    try:
+        df = pd.read_csv(url)
+        st.success("✅ فایل با موفقیت بارگذاری شد")
+    except Exception as e:
+        st.error(f"❌ خطا در بارگذاری فایل: {e}")
 
 if df is not None:
     st.subheader("اطلاعات دیتا 📊")
 
     st.write(f"🔢 شکل داده: {df.shape[0]} نمونه × {df.shape[1]} ستون")
-
 
     st.write("Data Types")
     st.write(df.dtypes)
@@ -90,8 +98,8 @@ if df is not None:
                  (x > (Q3 + 1.5 * IQR))).any(axis=1)
         df_out = df_out[mask]
 
-    elif out == "LOF":
 
+    elif out == "LOF":
         lof = LocalOutlierFactor(n_neighbors=3)
         outlier_pred = lof.fit_predict(x)
         outlier_index = np.where(outlier_pred == -1)
@@ -101,9 +109,9 @@ if df is not None:
         removed = lenn - len(df_out)
         percent = removed / lenn * 100
         st.success(f"✅ {removed} ردیف حذف شدند ({percent:.2f}٪)")
-
-    st.subheader("دیتای باقی مانده 📉 ")
-    st.write(f"🔢 Shape: {df_out.shape[0]} rows × {df_out.shape[1]} columns")
+    st.subheader("دیتای باقی مانده 📉")
+    st.write(f"شکل داده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
+    st.write(df_out.describe())
 ######
 st.header("پیش پردازش 🧹")
 scale_method = st.radio("روش نرمال‌سازی داده‌ها را انتخاب کنید:", ("None", "StandardScaler", "MinMaxScaler"))

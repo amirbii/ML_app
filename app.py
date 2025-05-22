@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from PIL import Image
 import os
 import subprocess
@@ -30,7 +30,7 @@ api_k = {"username": "amirbi",
 
 
 # apply_inline_styles()
-#####
+####################
 st.title("بارگذاری دیتاست 📁")
 
 method = st.radio("روش بارگذاری:", ["📤 CSV", "🌐Github", "🌐kaggle"])
@@ -76,6 +76,7 @@ elif method == "🌐kaggle":
         except Exception as e:
             st.error(f"❌ خطا در بارگذاری از Kaggle: {e}")
 
+####################
 if df is not None:
     st.subheader("اطلاعات دیتا 📊")
 
@@ -89,8 +90,8 @@ if df is not None:
 
     st.write("Descriptive Statistics:")
     st.write(df.describe(include='all'))
-    #####
 
+####################
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
@@ -102,6 +103,7 @@ if df is not None:
     x = df_out[num]
 
     if out == "None":
+        st.session_state.df_out = df
         st.info("هیچ داده‌ای حذف نشده است")
 
     if out != "None" and button:
@@ -135,19 +137,44 @@ if df is not None:
         removed = lenn - len(df_out)
         percent = removed / lenn * 100
         st.success(f"✅ {removed} ردیف حذف شدند ({percent:.2f}٪)")
+        st.session_state.df_out = df_out
 
-        st.subheader("دیتای باقی مانده 📉")
-        st.write(f"شکل داده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
-        st.write(df_out.describe())
+if "df_out" in st.session_state:
+    st.subheader("دیتای باقی مانده 📉")
+    st.write(f"شکل داده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
+    st.write(df_out.describe())
 
-######
+####################
 st.header("پیش پردازش 🧹")
 scale_method = st.radio("روش نرمال‌سازی داده‌ها را انتخاب کنید:", ("None", "StandardScaler", "MinMaxScaler"))
-######
+button1 = st.button(" نرمال‌سازی")
+
+if button1 and scale_method != "None":
+    if 'df_out' in st.session_state:
+        df_out = st.session_state.df_out
+    else:
+        df_out = df
+
+    numeric_cols = df_out.select_dtypes(include=np.number).columns
+
+    if scale_method == "StandardScaler":
+        scaler = StandardScaler()
+    elif scale_method == "MinMaxScaler":
+        scaler = MinMaxScaler()
+
+    scaled_array = scaler.fit_transform(df_out[numeric_cols])
+    df_scaled = pd.DataFrame(scaled_array, columns=numeric_cols)
+
+    st.subheader("داده‌های نرمال‌شده:")
+    st.dataframe(df_scaled.head())
+
+elif button1 and scale_method == "None":
+    st.info("نرمال‌سازی انتخاب نشده است.")
+####################
 st.header("تقسیم داده ➗")
 test_size = st.slider("مقدار تست", min_value=0.0, max_value=0.5, step=0.1)
 st.button("Train test split")
-######
+####################
 st.title("انواع مدل 🤖")
 
 model = st.selectbox("انتخاب مدل", ["Logistic", "SVM", "KNN", "Decision Tree"])
@@ -178,21 +205,26 @@ elif model == "Decision Tree":
 
     with col3:
         min_samples_leaf = st.number_input("min_samples_leaf", min_value=2, max_value=100, value=5)
-
+####################
 if st.button("Train"):
     st.write("Model Training")
-    ####
+
+####################
     if st.button("Auto Tuning"):
         st.write("Grid Search")
+####################
 x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 y = [1, 3, 4, 5, 6]
 fig = go.Figure(data=go.Scatter(x=x, y=y))
 st.plotly_chart(fig)
-###
+####################
+st.title("انواع مدل بوست 🤖")
+####################
 st.header("تست مدل 🖼️")
 image_file = st.file_uploader("فایل تست آپلود کنید", type=["jpg", "jpeg", "png"])
 
-###
+####################
 st.header("تولید کد نهایی 🧾")
 if st.button("Generat Code"):
     pass
+####################

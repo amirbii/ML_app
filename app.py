@@ -91,7 +91,7 @@ if df is not None:
     st.write("Descriptive Statistics:")
     st.write(df.describe(include='all'))
 
-####################
+    ####################
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
@@ -172,8 +172,44 @@ elif button1 and scale_method == "None":
     st.info("نرمال‌سازی انتخاب نشده است.")
 ####################
 st.header("تقسیم داده ➗")
-test_size = st.slider("مقدار تست", min_value=0.0, max_value=0.5, step=0.1)
-st.button("Train test split")
+
+test_size = st.slider("مقدار تست", min_value=0.0, max_value=0.5, step=0.05, value=0.2)
+shuffle = st.checkbox("Shuffle", value=True)
+stratify = st.checkbox("Stratify", value=False)
+
+if 'df_scaled' in st.session_state:
+    df_final = st.session_state.df_scaled
+elif 'df_out' in st.session_state:
+    df_final = st.session_state.df_out
+else:
+    df_final = df
+
+
+st.subheader("انتخاب ستون هدف:")
+target_column = st.selectbox("ستون لیبل", df_final.columns)
+
+button2 = st.button("Train/Test Split")
+
+if button2:
+    X = df_final.drop(columns=[target_column])
+    y = df_final[target_column]
+
+    stratify_value = y if stratify else None
+
+    if stratify and y.value_counts().min() < 2:
+        st.error("هر کلاس باید حداقل ۲ نمونه داشته باشد")
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y,
+            test_size=test_size,
+            shuffle=shuffle,
+            stratify=stratify_value,
+            random_state=42
+        )
+
+        st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
+        st.write(f" آموزش: {X_train.shape[0]} نمونه")
+        st.write(f" تست: {X_test.shape[0]} نمونه")
 ####################
 st.title("انواع مدل 🤖")
 
@@ -209,7 +245,7 @@ elif model == "Decision Tree":
 if st.button("Train"):
     st.write("Model Training")
 
-####################
+    ####################
     if st.button("Auto Tuning"):
         st.write("Grid Search")
 ####################
@@ -227,4 +263,4 @@ image_file = st.file_uploader("فایل تست آپلود کنید", type=["jpg"
 st.header("تولید کد نهایی 🧾")
 if st.button("Generat Code"):
     pass
-####################
+#####################

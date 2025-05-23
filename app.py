@@ -91,7 +91,7 @@ if df is not None:
     st.write("Descriptive Statistics:")
     st.write(df.describe(include='all'))
 
-    ####################
+####################
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
@@ -181,16 +181,20 @@ if 'df_scaled' in st.session_state:
     df_final = st.session_state.df_scaled
 elif 'df_out' in st.session_state:
     df_final = st.session_state.df_out
-else:
+elif 'df' in locals() and df is not None:
     df_final = df
+else:
+    df_final = None
 
+target_column = None
+button2 = False
 
-st.subheader("انتخاب ستون هدف:")
-target_column = st.selectbox("ستون لیبل", df_final.columns)
+if df_final is not None:
+    st.subheader("انتخاب ستون هدف:")
+    target_column = st.selectbox("ستون لیبل (y):", df_final.columns)
+    button2 = st.button("Train/Test Split")
 
-button2 = st.button("Train/Test Split")
-
-if button2:
+if button2 and target_column is not None:
     X = df_final.drop(columns=[target_column])
     y = df_final[target_column]
 
@@ -207,9 +211,10 @@ if button2:
             random_state=42
         )
 
-        st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
+        st.success("داده‌ها با موفقیت تقسیم شدند.")
         st.write(f" آموزش: {X_train.shape[0]} نمونه")
         st.write(f" تست: {X_test.shape[0]} نمونه")
+
 ####################
 st.title("انواع مدل 🤖")
 

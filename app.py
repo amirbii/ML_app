@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, accuracy_score, consensus_score, confusion_matrix
 
 api_k = {"username": "amirbi",
          "key": "cce234fe761dad172e451eb0141f1143"}
@@ -91,7 +92,7 @@ if df is not None:
     st.write("Descriptive Statistics:")
     st.write(df.describe(include='all'))
 
-####################
+    ####################
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
@@ -210,6 +211,11 @@ if button2 and target_column is not None:
             stratify=stratify_value,
             random_state=42
         )
+        st.session_state.X_train = X_train
+        st.session_state.X_test = X_test
+        st.session_state.y_train = y_train
+        st.session_state.y_test = y_test
+
 
         st.success("داده‌ها با موفقیت تقسیم شدند.")
         st.write(f" آموزش: {X_train.shape[0]} نمونه")
@@ -220,39 +226,94 @@ st.title("انواع مدل 🤖")
 
 model = st.selectbox("انتخاب مدل", ["Logistic", "SVM", "KNN", "Decision Tree"])
 
+st.markdown("### پارامترها ⚙️")
+
 if model == "Logistic":
-    st.markdown("### پارامترها ⚙️")
-    penalty = st.selectbox("Penalty", ["l2", "none"])
-    solver = st.selectbox("Solver", ["lbfgs", "liblinear", "saga"])
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        penalty = st.selectbox("Penalty", ["l2", "none"])
+    with col2:
+        solver = st.selectbox("Solver", ["lbfgs", "liblinear", "saga"])
+    with col3:
+        C = st.number_input("C", 0.01, 10.0, value=1.0, step=0.1)
+    with col4:
+        max_iter = st.slider("Max Iterations", 100, 1000, 200, step=50)
+
 
 elif model == "SVM":
-    st.markdown("### پارامترها ⚙️")
-    c = st.number_input("C (Regularization parameter)", min_value=0.01, max_value=100.0, value=1.0, step=0.1)
-    kernel = st.selectbox("Kernel", ["linear", "rbf", "poly", "sigmoid"])
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        c = st.number_input("C", min_value=0.01, max_value=100.0, value=1.0, step=0.1)
+    with col2:
+        kernel = st.selectbox("Kernel", ["linear", "rbf", "poly", "sigmoid"])
+    with col3:
+        gamma = st.selectbox("Gamma", ["auto", "scale"])
+
 
 elif model == "KNN":
-    st.markdown("### پارامترها ⚙️")
-    k = st.number_input("K (تعداد همسایه‌ها)", min_value=1, max_value=50, value=5)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        k = st.slider("K", min_value=1, max_value=50, value=5)
+    with col2:
+        weight = st.selectbox("Weight", ["uniform", "distance"])
+    with col3:
+        metric = st.selectbox("Metric", ["euclidean", "manhattan", "minkowski"])
+
 
 elif model == "Decision Tree":
-    st.markdown("### پارامترها ⚙️")
-    col1, col2, col3 = st.columns(3)
-
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         criterion = st.selectbox("Criterion", ["gini", "entropy"])
-
     with col2:
-        max_depth = st.number_input("Max Depth", min_value=1, max_value=100, value=5)
-
+        max_depth = st.number_input("Max Depth", min_value=1, max_value=50, value=5)
     with col3:
-        min_samples_leaf = st.number_input("min_samples_leaf", min_value=2, max_value=100, value=5)
+        min_samples_leaf = st.number_input("min_samples_leaf", min_value=1, max_value=100, value=1)
+    with col4:
+        min_samples_split = st.number_input("min_samples_split", min_value=2, max_value=20, value=2)
+####################
+if st.button("Auto Tuning"):
+    st.write("Grid Search")
+
 ####################
 if st.button("Train"):
-    st.write("Model Training")
+    if not all(k in st.session_state for k in ["X_train", "X_test", "y_train", "y_test"]):
+        st.warning("⚠️ ابتدا داده‌ها را با Train/Test Split تقسیم کنید.")
+    else:
+        X_train = st.session_state.X_train
+        y_train = st.session_state.y_train
+        X_test = st.session_state.X_test
+        y_test = st.session_state.y_test
+
+        if model == "Logistic":
+            clf = LogisticRegression(penalty=penalty, solver=solver, C=C, max_iter=max_iter)
+        elif model == "SVM":
+            clf = SVC(C=c, kernel=kernel, gamma=gamma)
+        elif model == "KNN":
+            clf = KNeighborsClassifier(n_neighbors=k, weights=weight, metric=metric)
+        elif model == "Decision Tree":
+            clf = DecisionTreeClassifier(
+                criterion=criterion,
+                max_depth=max_depth,
+                min_samples_leaf=min_samples_leaf,
+                min_samples_split=min_samples_split
+            )
+
+        clf.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+
+        acc = accuracy_score(y_test, y_pred)
+        st.success("✅ مدل با موفقیت آموزش داده شد")
+        st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
+
+
+        st.subheader("📊 Confusion Matrix")
+        st.write(confusion_matrix(y_test, y_pred))
+
+        st.subheader("📋 Classification Report")
+        st.text(classification_report(y_test, y_pred))
 
     ####################
-    if st.button("Auto Tuning"):
-        st.write("Grid Search")
+
 ####################
 x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 y = [1, 3, 4, 5, 6]

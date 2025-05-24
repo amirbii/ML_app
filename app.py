@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from PIL import Image
 import os
@@ -14,6 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, consensus_score, confusion_matrix
+from sklearn.neighbors import LocalOutlierFactor
 
 api_k = {"username": "amirbi",
          "key": "cce234fe761dad172e451eb0141f1143"}
@@ -128,7 +128,6 @@ if df is not None:
             df_out = df_out[mask]
 
         elif out == "LOF":
-            from sklearn.neighbors import LocalOutlierFactor
 
             lof = LocalOutlierFactor(n_neighbors=3)
             outlier_pred = lof.fit_predict(x)
@@ -137,7 +136,8 @@ if df is not None:
 
         removed = lenn - len(df_out)
         percent = removed / lenn * 100
-        st.success(f"✅ {removed} ردیف حذف شدند ({percent:.2f}٪)")
+        st.success(f" نمونه حذف شدند: {removed}")
+        st.markdown(f"**🎯 درصد نمونه های باقی مانده:** {percent:.2f}")
         st.session_state.df_out = df_out
 
 if "df_out" in st.session_state:
@@ -175,9 +175,14 @@ elif button1 and scale_method == "None":
 st.header("تقسیم داده ➗")
 
 test_size = st.slider("مقدار تست", min_value=0.0, max_value=0.5, step=0.05, value=0.2)
-shuffle = st.checkbox("Shuffle", value=True)
-stratify = st.checkbox("Stratify", value=False)
 
+col1, col2 = st.columns(2)
+with col1:
+    shuffle = st.checkbox("🔀 Shuffle", value=True)
+with col2:
+    stratify = st.checkbox("🎯 Stratify", value=False)
+
+# انتخاب دیتا
 if 'df_scaled' in st.session_state:
     df_final = st.session_state.df_scaled
 elif 'df_out' in st.session_state:
@@ -190,8 +195,8 @@ else:
 target_column = None
 button2 = False
 
-if df_final is not None:
-    st.subheader("انتخاب ستون هدف:")
+if df_final is not None and len(df_final) > 1:
+    st.subheader("🎯 انتخاب ستون هدف:")
     target_column = st.selectbox("ستون لیبل (y):", df_final.columns)
     button2 = st.button("Train/Test Split")
 
@@ -199,11 +204,14 @@ if button2 and target_column is not None:
     X = df_final.drop(columns=[target_column])
     y = df_final[target_column]
 
-    stratify_value = y if stratify else None
+    st.write("📊 تعداد نمونه در هر کلاس:")
+    st.write(y.value_counts())
 
     if stratify and y.value_counts().min() < 2:
-        st.error("هر کلاس باید حداقل ۲ نمونه داشته باشد")
+        st.error("❌ برای Stratify، هر کلاس باید حداقل ۲ نمونه داشته باشد.")
     else:
+        stratify_value = y if stratify else None
+
         X_train, X_test, y_train, y_test = train_test_split(
             X, y,
             test_size=test_size,
@@ -211,15 +219,17 @@ if button2 and target_column is not None:
             stratify=stratify_value,
             random_state=42
         )
+
+        # ذخیره در session
         st.session_state.X_train = X_train
         st.session_state.X_test = X_test
         st.session_state.y_train = y_train
         st.session_state.y_test = y_test
 
+        st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
+        st.write(f"🟩 آموزش: {X_train.shape[0]} نمونه")
+        st.write(f"🟥 تست: {X_test.shape[0]} نمونه")
 
-        st.success("داده‌ها با موفقیت تقسیم شدند.")
-        st.write(f" آموزش: {X_train.shape[0]} نمونه")
-        st.write(f" تست: {X_test.shape[0]} نمونه")
 
 ####################
 st.title("انواع مدل 🤖")

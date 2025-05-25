@@ -74,9 +74,9 @@ elif method == "🌐kaggle":
                     st.success("✅ فایل CSV با موفقیت بارگذاری شد")
                     break
             else:
-                st.warning("⚠️ فایل CSV در دیتاست یافت نشد.")
+                st.warning("فایل CSV در دیتاست یافت نشد.")
         except Exception as e:
-            st.error(f"❌ خطا در بارگذاری از Kaggle: {e}")
+            st.error(f"خطا در بارگذاری از Kaggle: {e}")
 
 ####################
 if df is not None:
@@ -138,7 +138,7 @@ if df is not None:
         removed = lenn - len(df_out)
         percent_left = len(df_out) / lenn * 100
         st.success(f" نمونه حذف شدند: {removed}")
-        st.markdown(f"**🎯 درصد نمونه های باقی مانده:** {percent_left:.2f}")
+        st.markdown(f"**درصد نمونه های باقی مانده:** {percent_left:.2f}")
         st.session_state.df_out = df_out
 
 if "df_out" in st.session_state:
@@ -172,7 +172,7 @@ if button1 and scale_method != "None":
     st.session_state.df_scaled = df_scaled
 
 elif button1 and scale_method == "None":
-    st.info("نرمال‌سازی انتخاب نشده است.")
+    st.info("نرمال‌سازی انتخاب نشده است")
 ####################
 st.header("تقسیم داده ➗")
 
@@ -210,9 +210,9 @@ if button2 and target_column is not None:
     st.write(y.value_counts())
 
     if stratify and y.value_counts().min() < 2:
-        st.error("❌ برای Stratify، هر کلاس باید حداقل ۲ نمونه داشته باشد.")
+        st.error("برای Stratify، هر کلاس باید حداقل ۲ نمونه داشته باشد.")
     elif stratify and not shuffle:
-        st.error("❌ برای استفاده از Stratify باید گزینه Shuffle نیز فعال باشد.")
+        st.error("برای استفاده از Stratify باید گزینه Shuffle نیز فعال باشد.")
     else:
         stratify_value = y if stratify else None
 
@@ -292,7 +292,7 @@ with col_train:
 
 if auto_btn:
     if not all(k in st.session_state for k in ["X_train", "y_train"]):
-        st.warning("⚠️ ابتدا داده‌ها را با Train/Test Split تقسیم کنید.")
+        st.warning("ابتدا داده‌ها را با Train/Test Split تقسیم کنید")
     else:
         X_train = st.session_state.X_train.select_dtypes(include=[np.number])
         y_train = st.session_state.y_train
@@ -336,14 +336,12 @@ if auto_btn:
 
 if train_btn:
     if not all(k in st.session_state for k in ["X_train", "X_test", "y_train", "y_test"]):
-        st.warning("⚠️ ابتدا داده‌ها را با Train/Test Split تقسیم کنید.")
+        st.warning("ابتدا داده‌ها را با Train/Test Split تقسیم کنید")
     else:
         X_train = st.session_state.X_train
         y_train = st.session_state.y_train
         X_test = st.session_state.X_test
         y_test = st.session_state.y_test
-
-
 
         if model == "Logistic":
             clf = LogisticRegression(penalty=penalty, solver=solver, C=C, max_iter=max_iter)
@@ -412,51 +410,106 @@ if image_file is not None:
         st.image(image, caption="تصویر آپلود شده", width=120)
         st.success(f"عدد پیش‌بینی‌شده توسط مدل: {pred[0]}")
     else:
-        st.warning("❗ ابتدا مدل را آموزش دهید.")
+        st.warning("ابتدا مدل را آموزش دهید")
 
 ####################
+import_streams = [
+    "import pandas as pd",
+    "import numpy as np",
+    "from sklearn.model_selection import train_test_split",
+    "from sklearn.metrics import accuracy_score, classification_report, confusion_matrix"
+]
+
+if scale_method == "StandardScaler":
+    import_streams.append("from sklearn.preprocessing import StandardScaler")
+elif scale_method == "MinMaxScaler":
+    import_streams.append("from sklearn.preprocessing import MinMaxScaler")
+
+if model == "Decision Tree":
+    import_streams.append("from sklearn.tree import DecisionTreeClassifier")
+elif model == "Logistic":
+    import_streams.append("from sklearn.linear_model import LogisticRegression")
+elif model == "SVM":
+    import_streams.append("from sklearn.svm import SVC")
+elif model == "KNN":
+    import_streams.append("from sklearn.neighbors import KNeighborsClassifier")
+
+# شروع اسکریپت (فرض بر اینه کاربر دیتاست csvشو داره)
+code_main = (
+    "# --- بارگذاری داده ---\n"
+    "df = pd.read_csv('data.csv')  # دیتاست خود را اینجا قرار دهید\n"
+    f"X = df.drop(columns=['{target_column}'])\n"
+    f"y = df['{target_column}']\n"
+)
+
+# نرمال‌سازی اگر لازم بود
+if scale_method == "StandardScaler":
+    code_main += (
+        "scaler = StandardScaler()\n"
+        "X = scaler.fit_transform(X)\n"
+    )
+elif scale_method == "MinMaxScaler":
+    code_main += (
+        "scaler = MinMaxScaler()\n"
+        "X = scaler.fit_transform(X)\n"
+    )
+
+# تقسیم داده
+code_main += (
+    f"X_train, X_test, y_train, y_test = train_test_split("
+    "X, y, "
+    f"test_size={test_size}, "
+    "random_state=42, "
+    f"shuffle={shuffle}, "
+    f"stratify=y if {stratify} else None)\n"
+)
+
+# مدل و آموزش
+if model == "Decision Tree":
+    code_main += (
+        f"model = DecisionTreeClassifier("
+        f"criterion='{criterion}', "
+        f"max_depth={max_depth}, "
+        f"min_samples_leaf={min_samples_leaf}, "
+        f"min_samples_split={min_samples_split})\n"
+    )
+elif model == "Logistic":
+    code_main += (
+        f"model = LogisticRegression("
+        f"penalty='{penalty}', "
+        f"solver='{solver}', "
+        f"C={C}, "
+        f"max_iter={max_iter})\n"
+    )
+elif model == "SVM":
+    code_main += (
+        f"model = SVC(C={c}, kernel='{kernel}', gamma='{gamma}')\n"
+    )
+elif model == "KNN":
+    code_main += (
+        f"model = KNeighborsClassifier("
+        f"n_neighbors={k}, weights='{weight}', metric='{metric}')\n"
+    )
+
+code_main += (
+    "model.fit(X_train, y_train)\n"
+    "y_pred = model.predict(X_test)\n"
+    "print('Accuracy:', accuracy_score(y_test, y_pred))\n"
+    "print('Confusion Matrix:\\n', confusion_matrix(y_test, y_pred))\n"
+    "print('Classification Report:\\n', classification_report(y_test, y_pred))\n"
+)
+
+# ساختن فایل کد و نمایش
+full_code = "\n".join(import_streams) + "\n\n" + code_main
+
 st.header("تولید کد نهایی 🧾")
+if st.button("تولید فایل"):
+    with open("code.py", "w", encoding="utf-8") as f:
+        f.write(full_code)
+    st.success("کد با موفقیت ساخته و ذخیره شد.")
+    with open("code.py", "rb") as f:
+        st.download_button("دانلود فایل", f, file_name="code.py")
 
-code_str = ""
-
-if train_btn:
-    if model == "Decision Tree":
-        code_str = (
-            f"from sklearn.tree import DecisionTreeClassifier\n"
-            f"model = DecisionTreeClassifier(criterion='{criterion}', "
-            f"max_depth={max_depth}, min_samples_leaf={min_samples_leaf}, min_samples_split={min_samples_split})\n"
-            f"model.fit(X_train, y_train)\n"
-        )
-    elif model == "Logistic":
-        code_str = (
-            f"from sklearn.linear_model import LogisticRegression\n"
-            f"model = LogisticRegression(penalty='{penalty}', solver='{solver}', C={C}, max_iter={max_iter})\n"
-            f"model.fit(X_train, y_train)\n"
-        )
-    elif model == "SVM":
-        code_str = (
-            f"from sklearn.svm import SVC\n"
-            f"model = SVC(C={c}, kernel='{kernel}', gamma='{gamma}')\n"
-            f"model.fit(X_train, y_train)\n"
-        )
-    elif model == "KNN":
-        code_str = (
-            f"from sklearn.neighbors import KNeighborsClassifier\n"
-            f"model = KNeighborsClassifier(n_neighbors={k}, weights='{weight}', metric='{metric}')\n"
-            f"model.fit(X_train, y_train)\n"
-        )
-
-    st.session_state.generated_code = code_str
-
-
-if st.button("تولید فایل کد (code.py)"):
-    if "generated_code" in st.session_state and st.session_state.generated_code:
-        with open("code.py", "w", encoding="utf-8") as file:
-            file.write(st.session_state.generated_code)
-        st.success("کد با موفقیت در فایل code.py ذخیره شد!")
-        with open("code.py", "rb") as f:
-            st.download_button("دانلود فایل code.py", f, file_name="code.py")
-    else:
-        st.warning("ابتدا مدل را آموزش دهید تا کد ساخته شود.")
+st.code(full_code, language="python")
 
 #####################

@@ -434,15 +434,13 @@ elif model == "SVM":
 elif model == "KNN":
     import_streams.append("from sklearn.neighbors import KNeighborsClassifier")
 
-# شروع اسکریپت (فرض بر اینه کاربر دیتاست csvشو داره)
 code_main = (
-    "# --- بارگذاری داده ---\n"
-    "df = pd.read_csv('data.csv')  # دیتاست خود را اینجا قرار دهید\n"
+
+    "df = pd.read_csv('mnist_half.csv')\n"
     f"X = df.drop(columns=['{target_column}'])\n"
     f"y = df['{target_column}']\n"
 )
 
-# نرمال‌سازی اگر لازم بود
 if scale_method == "StandardScaler":
     code_main += (
         "scaler = StandardScaler()\n"
@@ -454,7 +452,6 @@ elif scale_method == "MinMaxScaler":
         "X = scaler.fit_transform(X)\n"
     )
 
-# تقسیم داده
 code_main += (
     f"X_train, X_test, y_train, y_test = train_test_split("
     "X, y, "
@@ -464,7 +461,6 @@ code_main += (
     f"stratify=y if {stratify} else None)\n"
 )
 
-# مدل و آموزش
 if model == "Decision Tree":
     code_main += (
         f"model = DecisionTreeClassifier("
@@ -499,7 +495,6 @@ code_main += (
     "print('Classification Report:\\n', classification_report(y_test, y_pred))\n"
 )
 
-# ساختن فایل کد و نمایش
 full_code = "\n".join(import_streams) + "\n\n" + code_main
 
 st.header("تولید کد نهایی 🧾")

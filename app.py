@@ -92,7 +92,7 @@ if df is not None:
     st.write("Descriptive Statistics:")
     st.write(df.describe(include='all'))
 
-    ####################
+####################
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
@@ -147,7 +147,7 @@ if "df_out" in st.session_state:
 
 ####################
 st.header("پیش پردازش 🧹")
-scale_method = st.radio("روش نرمال‌سازی داده‌ها را انتخاب کنید:", ("None", "StandardScaler", "MinMaxScaler"))
+scale_method = st.radio("روش نرمال‌سازی داده", ("None", "StandardScaler", "MinMaxScaler"))
 button1 = st.button(" نرمال‌سازی")
 
 if button1 and scale_method != "None":
@@ -182,7 +182,7 @@ with col1:
 with col2:
     stratify = st.checkbox("🎯 Stratify", value=False)
 
-# انتخاب دیتا
+
 if 'df_scaled' in st.session_state:
     df_final = st.session_state.df_scaled
 elif 'df_out' in st.session_state:
@@ -196,7 +196,8 @@ target_column = None
 button2 = False
 
 if df_final is not None and len(df_final) > 1:
-    st.subheader("🎯 انتخاب ستون هدف:")
+    st.subheader("🎯 انتخاب ستون هدف")
+    df_final = df_final[sorted(df_final.columns, reverse=False)]
     target_column = st.selectbox("ستون لیبل (y):", df_final.columns)
     button2 = st.button("Train/Test Split")
 
@@ -220,15 +221,15 @@ if button2 and target_column is not None:
             random_state=42
         )
 
-        # ذخیره در session
+
         st.session_state.X_train = X_train
         st.session_state.X_test = X_test
         st.session_state.y_train = y_train
         st.session_state.y_test = y_test
 
         st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
-        st.write(f"🟩 آموزش: {X_train.shape[0]} نمونه")
-        st.write(f"🟥 تست: {X_test.shape[0]} نمونه")
+        st.write(f"🟩  نمونه آموزش: {X_train.shape[0]} ")
+        st.write(f"🟥  نمونه تست: {X_test.shape[0]} ")
 
 
 ####################

@@ -8,12 +8,13 @@ import subprocess
 from zipfile import ZipFile
 import plotly.graph_objects as go
 from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, accuracy_score, consensus_score, confusion_matrix
+from sklearn.metrics import classification_report, accuracy_score, consensus_score, confusion_matrix, roc_curve, auc
 from sklearn.neighbors import LocalOutlierFactor
+import matplotlib.pyplot as plt
 
 api_k = {"username": "amirbi",
          "key": "cce234fe761dad172e451eb0141f1143"}
@@ -92,7 +93,7 @@ if df is not None:
     st.write("Descriptive Statistics:")
     st.write(df.describe(include='all'))
 
-####################
+    ####################
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
@@ -135,9 +136,9 @@ if df is not None:
             df_out = df_out.drop(index=outlier_index[0])
 
         removed = lenn - len(df_out)
-        percent = removed / lenn * 100
+        percent_left = len(df_out) / lenn * 100
         st.success(f" نمونه حذف شدند: {removed}")
-        st.markdown(f"**🎯 درصد نمونه های باقی مانده:** {percent:.2f}")
+        st.markdown(f"**🎯 درصد نمونه های باقی مانده:** {percent_left:.2f}")
         st.session_state.df_out = df_out
 
 if "df_out" in st.session_state:
@@ -168,6 +169,7 @@ if button1 and scale_method != "None":
 
     st.subheader("داده‌های نرمال‌شده:")
     st.dataframe(df_scaled.head())
+    st.session_state.df_scaled = df_scaled
 
 elif button1 and scale_method == "None":
     st.info("نرمال‌سازی انتخاب نشده است.")
@@ -181,7 +183,6 @@ with col1:
     shuffle = st.checkbox("🔀 Shuffle", value=True)
 with col2:
     stratify = st.checkbox("🎯 Stratify", value=False)
-
 
 if 'df_scaled' in st.session_state:
     df_final = st.session_state.df_scaled
@@ -210,6 +211,8 @@ if button2 and target_column is not None:
 
     if stratify and y.value_counts().min() < 2:
         st.error("❌ برای Stratify، هر کلاس باید حداقل ۲ نمونه داشته باشد.")
+    elif stratify and not shuffle:
+        st.error("❌ برای استفاده از Stratify باید گزینه Shuffle نیز فعال باشد.")
     else:
         stratify_value = y if stratify else None
 
@@ -221,7 +224,6 @@ if button2 and target_column is not None:
             random_state=42
         )
 
-
         st.session_state.X_train = X_train
         st.session_state.X_test = X_test
         st.session_state.y_train = y_train
@@ -230,7 +232,6 @@ if button2 and target_column is not None:
         st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
         st.write(f"🟩  نمونه آموزش: {X_train.shape[0]} ")
         st.write(f"🟥  نمونه تست: {X_test.shape[0]} ")
-
 
 ####################
 st.title("انواع مدل 🤖")
@@ -246,7 +247,7 @@ if model == "Logistic":
     with col2:
         solver = st.selectbox("Solver", ["lbfgs", "liblinear", "saga"])
     with col3:
-        C = st.number_input("C", 0.01, 10.0, value=1.0, step=0.1)
+        C = st.number_input("C", 0.01, 100.0, value=1.0, step=0.1)
     with col4:
         max_iter = st.slider("Max Iterations", 100, 1000, 200, step=50)
 
@@ -282,11 +283,58 @@ elif model == "Decision Tree":
     with col4:
         min_samples_split = st.number_input("min_samples_split", min_value=2, max_value=20, value=2)
 ####################
-if st.button("Auto Tuning"):
-    st.write("Grid Search")
+col_train, col_grid = st.columns(2)
 
-####################
-if st.button("Train"):
+with col_grid:
+    auto_btn = st.button("Auto Tuning (Grid Search)")
+with col_train:
+    train_btn = st.button("Train")
+
+if auto_btn:
+    if not all(k in st.session_state for k in ["X_train", "y_train"]):
+        st.warning("⚠️ ابتدا داده‌ها را با Train/Test Split تقسیم کنید.")
+    else:
+        X_train = st.session_state.X_train.select_dtypes(include=[np.number])
+        y_train = st.session_state.y_train
+
+        if model == "Logistic":
+            param_grid = {
+                'penalty': ['l2', 'none'],
+                'solver': ['lbfgs', 'liblinear', 'saga'],
+                'C': [0.01, 0.1, 1, 10],
+                'max_iter': [100, 200, 500]
+            }
+            gs = GridSearchCV(LogisticRegression(), param_grid, cv=3, n_jobs=-1)
+        elif model == "SVM":
+            param_grid = {
+                'C': [0.01, 0.1, 1, 10],
+                'kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
+                'gamma': ['auto', 'scale']
+            }
+            gs = GridSearchCV(SVC(), param_grid, cv=3, n_jobs=-1)
+        elif model == "KNN":
+            param_grid = {
+                'n_neighbors': [3, 5, 7, 9],
+                'weights': ['uniform', 'distance'],
+                'metric': ['euclidean', 'manhattan', 'minkowski']
+            }
+            gs = GridSearchCV(KNeighborsClassifier(), param_grid, cv=3, n_jobs=-1)
+        elif model == "Decision Tree":
+            param_grid = {
+                'criterion': ['gini', 'entropy'],
+                'max_depth': [3, 5, 10, 20],
+                'min_samples_leaf': [1, 2, 4, 6],
+                'min_samples_split': [2, 4, 8]
+            }
+            gs = GridSearchCV(DecisionTreeClassifier(), param_grid, cv=3, n_jobs=-1)
+
+        with st.spinner("در حال جستجو برای بهترین پارامترها..."):
+            gs.fit(X_train, y_train)
+        st.success("✅ بهترین پارامترها پیدا شد!")
+        st.json(gs.best_params_)
+        st.write(f"بهترین دقت (Cross-Validation): {gs.best_score_:.2f}")
+
+if train_btn:
     if not all(k in st.session_state for k in ["X_train", "X_test", "y_train", "y_test"]):
         st.warning("⚠️ ابتدا داده‌ها را با Train/Test Split تقسیم کنید.")
     else:
@@ -294,6 +342,8 @@ if st.button("Train"):
         y_train = st.session_state.y_train
         X_test = st.session_state.X_test
         y_test = st.session_state.y_test
+
+
 
         if model == "Logistic":
             clf = LogisticRegression(penalty=penalty, solver=solver, C=C, max_iter=max_iter)
@@ -308,14 +358,15 @@ if st.button("Train"):
                 min_samples_leaf=min_samples_leaf,
                 min_samples_split=min_samples_split
             )
-
+        X_train = X_train.select_dtypes(include=[np.number])
+        X_test = X_test.select_dtypes(include=[np.number])
         clf.fit(X_train, y_train)
+        st.session_state.clf = clf
         y_pred = clf.predict(X_test)
 
         acc = accuracy_score(y_test, y_pred)
         st.success("✅ مدل با موفقیت آموزش داده شد")
         st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
-
 
         st.subheader("📊 Confusion Matrix")
         st.write(confusion_matrix(y_test, y_pred))
@@ -323,21 +374,89 @@ if st.button("Train"):
         st.subheader("📋 Classification Report")
         st.text(classification_report(y_test, y_pred))
 
-    ####################
+        # if len(np.unique(y_test)) == 2:
+        #     if hasattr(clf, "predict_proba"):
+        #         y_score = clf.predict_proba(X_test)[:, 1]
+        #     else:
+        #         y_score = clf.decision_function(X_test)
+        #     fpr, tpr, _ = roc_curve(y_test, y_score)
+        #     auc_score = auc(fpr, tpr)
+        #     plt.figure()
+        #     plt.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
+        #     plt.plot([0, 1], [0, 1], "k--")
+        #     plt.xlabel("False Positive Rate")
+        #     plt.ylabel("True Positive Rate")
+        #     plt.title("ROC Curve")
+        #     plt.legend()
+        #     st.pyplot(plt)
+        # else:
+        #     st.info("ROC Curve فقط برای دسته‌بندی دودویی رسم می‌شود.")
+####################
 
+# st.title("انواع مدل بوست 🤖")
 ####################
-x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-y = [1, 3, 4, 5, 6]
-fig = go.Figure(data=go.Scatter(x=x, y=y))
-st.plotly_chart(fig)
-####################
-st.title("انواع مدل بوست 🤖")
-####################
-st.header("تست مدل 🖼️")
+st.header("تست مدل با عکس 🖼️")
 image_file = st.file_uploader("فایل تست آپلود کنید", type=["jpg", "jpeg", "png"])
+
+if image_file is not None:
+
+    image = Image.open(image_file).convert("L")
+    image = image.resize((28, 28))
+    image_np = np.array(image)
+    image_np = 255 - image_np
+    image_np = image_np / 255.0
+    image_np = image_np.reshape(1, -1)
+
+    if 'clf' in st.session_state:
+        pred = st.session_state.clf.predict(image_np)
+        st.image(image, caption="تصویر آپلود شده", width=120)
+        st.success(f"عدد پیش‌بینی‌شده توسط مدل: {pred[0]}")
+    else:
+        st.warning("❗ ابتدا مدل را آموزش دهید.")
 
 ####################
 st.header("تولید کد نهایی 🧾")
-if st.button("Generat Code"):
-    pass
+
+code_str = ""
+
+if train_btn:
+    if model == "Decision Tree":
+        code_str = (
+            f"from sklearn.tree import DecisionTreeClassifier\n"
+            f"model = DecisionTreeClassifier(criterion='{criterion}', "
+            f"max_depth={max_depth}, min_samples_leaf={min_samples_leaf}, min_samples_split={min_samples_split})\n"
+            f"model.fit(X_train, y_train)\n"
+        )
+    elif model == "Logistic":
+        code_str = (
+            f"from sklearn.linear_model import LogisticRegression\n"
+            f"model = LogisticRegression(penalty='{penalty}', solver='{solver}', C={C}, max_iter={max_iter})\n"
+            f"model.fit(X_train, y_train)\n"
+        )
+    elif model == "SVM":
+        code_str = (
+            f"from sklearn.svm import SVC\n"
+            f"model = SVC(C={c}, kernel='{kernel}', gamma='{gamma}')\n"
+            f"model.fit(X_train, y_train)\n"
+        )
+    elif model == "KNN":
+        code_str = (
+            f"from sklearn.neighbors import KNeighborsClassifier\n"
+            f"model = KNeighborsClassifier(n_neighbors={k}, weights='{weight}', metric='{metric}')\n"
+            f"model.fit(X_train, y_train)\n"
+        )
+
+    st.session_state.generated_code = code_str
+
+
+if st.button("تولید فایل کد (code.py)"):
+    if "generated_code" in st.session_state and st.session_state.generated_code:
+        with open("code.py", "w", encoding="utf-8") as file:
+            file.write(st.session_state.generated_code)
+        st.success("کد با موفقیت در فایل code.py ذخیره شد!")
+        with open("code.py", "rb") as f:
+            st.download_button("دانلود فایل code.py", f, file_name="code.py")
+    else:
+        st.warning("ابتدا مدل را آموزش دهید تا کد ساخته شود.")
+
 #####################

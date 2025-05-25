@@ -1,6 +1,6 @@
 # Streamlit ML Model Trainer
 
-[🌐 **دموی آنلاین (Streamlit App)**](https://amirbiw.streamlit.app/)
+[🌐 ** نسخه آنلاین (Streamlit App)**](https://amirbiw.streamlit.app/)
 
 این پروژه به شما کمک می‌کند به راحتی یک مدل یادگیری ماشین (Machine Learning) روی داده‌های خود با Streamlit آموزش دهید، داده را نرمال‌سازی کنید، داده‌های پرت را حذف کنید و حتی کد نهایی مدل خود را بسازید و خروجی بگیرید.
 

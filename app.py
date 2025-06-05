@@ -39,7 +39,7 @@ method = st.radio("روش بارگذاری:", ["📤 CSV", "🌐Github", "🌐ka
 df = None
 
 if method == "📤 CSV":
-    uploaded_file = st.file_uploader("فایل CSV را انتخاب کنید", type=["csv"])
+    uploaded_file = st.file_uploader("فایل را انتخاب کنید", type=["csv"])
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
         st.success("✅ فایل با موفقیت بارگذاری شد")
@@ -70,9 +70,9 @@ elif method == "🌐kaggle":
             csv_files = [file for file in os.listdir(download_path) if file.endswith('.csv')]
             if csv_files:
                 df = pd.read_csv(os.path.join(download_path, csv_files[0]))
-                st.success("✅ فایل CSV با موفقیت بارگذاری شد")
+                st.success("فایل  با موفقیت بارگذاری شد ✅")
             else:
-                st.warning("⚠️ فایل CSV در دیتاست یافت نشد.")
+                st.warning(" فایل در دیتاست یافت نشد⚠️")
         except Exception as e:
             st.error(f"❌ خطا در بارگذاری از Kaggle: {e}")
 
@@ -82,13 +82,10 @@ if df is not None:
 
     st.write(f"🔢 شکل داده: {df.shape[0]} نمونه × {df.shape[1]} ستون")
 
-    st.write("Data Types")
+    st.write("انواع داده")
     st.write(df.dtypes)
 
-    st.write("Missing Values")
-    st.write(df.isnull().sum())
-
-    st.write("Descriptive Statistics:")
+    st.write("آمار توصیفی")
     st.write(df.describe(include='all'))
 
     ####################
@@ -135,11 +132,19 @@ if df is not None:
 
         removed = lenn - len(df_out)
         percent_left = len(df_out) / lenn * 100
-        st.success(f" نمونه حذف شدند: {removed}")
-        st.markdown(f"**درصد نمونه های باقی مانده:** {percent_left:.2f}")
+        # st.success(f" نمونه حذف شدند: {removed}")
+        # st.markdown(f"**درصد نمونه های باقی مانده:** {percent_left:.2f}")
         st.session_state.df_out = df_out
+        st.session_state.removed = removed
+        st.session_state.percent_left = percent_left
 
 if "df_out" in st.session_state:
+    removed = st.session_state.get("removed", 0)
+    percent_left = st.session_state.get("percent_left", 100)
+    df_out = st.session_state.df_out
+
+    st.success(f" نمونه حذف شدند: {removed}")
+    st.markdown(f"**درصد نمونه های باقی مانده:** {percent_left:.2f}")
     st.subheader("دیتای باقی مانده 📉")
     st.write(f"شکل داده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
     st.write(df_out.describe())
@@ -185,7 +190,7 @@ if button2 and target_column is not None:
     # st.write(y.value_counts())
 
     if stratify and y.value_counts().min() < 2:
-        st.error("برای Stratify، هر کلاس باید حداقل ۲ نمونه داشته باشد.")
+        st.error("هر کلاس باید حداقل ۲ نمونه داشته باشد.")
     elif stratify and not shuffle:
         st.error("برای استفاده از Stratify باید گزینه Shuffle نیز فعال باشد.")
     else:
@@ -213,7 +218,6 @@ if 'X_train' in st.session_state and 'X_test' in st.session_state:
     st.write("📊 تعداد نمونه های تست هر کلاس")
     st.write(st.session_state.y_test.value_counts())
 
-
 ####################
 st.header("پیش پردازش 🧹")
 scale_method = st.radio("روش نرمال‌سازی داده", ("None", "StandardScaler", "MinMaxScaler"))
@@ -229,7 +233,6 @@ if button1 and scale_method != "None":
 
     X = df_out.drop(columns=[target_column])
     y = df_out[target_column]
-
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
@@ -249,11 +252,13 @@ if button1 and scale_method != "None":
 
     st.session_state.X_train_scaled = X_train_scaled
     st.session_state.X_test_scaled = X_test_scaled
+    st.session_state.scaled_columns = X_train.columns.tolist()
+    # st.dataframe(pd.DataFrame(st.session_state.X_train_scaled, columns=st.session_state.scaled_columns).head())
 
-    st.subheader("داده‌های نرمال‌شده")
-    st.dataframe(pd.DataFrame(st.session_state.X_train_scaled, columns=X_train.columns).head())
-
-    st.success("✅ داده‌ها با موفقیت نرمال‌سازی شدند.")
+if 'X_train_scaled' in st.session_state:
+    st.success("✅ داده‌ها با موفقیت نرمال‌سازی شدند")
+    st.subheader("داده‌های نرمال📉")
+    st.dataframe(pd.DataFrame(st.session_state.X_train_scaled, columns=st.session_state.scaled_columns).head())
 
 ####################
 st.title("انواع مدل 🤖")
@@ -352,7 +357,7 @@ if auto_btn:
 
         with st.spinner("در حال جستجو برای بهترین پارامترها..."):
             gs.fit(X_train, y_train)
-        st.success("✅ بهترین پارامترها پیدا شد!")
+        st.success('✅ بهترین پارامترها پیدا شد')
         st.json(gs.best_params_)
         st.write(f"بهترین دقت (Cross-Validation): {gs.best_score_:.2f}")
 
@@ -378,22 +383,25 @@ if train_btn:
                 min_samples_leaf=min_samples_leaf,
                 min_samples_split=min_samples_split
             )
+        st.session_state.clf = clf
+
         X_train = X_train.select_dtypes(include=[np.number])
         X_test = X_test.select_dtypes(include=[np.number])
+
         clf.fit(X_train, y_train)
-        st.session_state.clf = clf
+
         y_pred = clf.predict(X_test)
 
         acc = accuracy_score(y_test, y_pred)
         st.session_state.acc = acc
-        st.success("✅ مدل با موفقیت آموزش داده شد")
-        st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
 
-        st.subheader("📊 Confusion Matrix")
-        st.write(confusion_matrix(y_test, y_pred))
+        # st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
 
-        st.subheader("📋 Classification Report")
-        st.text(classification_report(y_test, y_pred))
+        # st.subheader("📊 Confusion Matrix")
+        # st.write(confusion_matrix(y_test, y_pred))
+
+        # st.subheader("📋 Classification Report")
+        # st.text(classification_report(y_test, y_pred))
         st.session_state.report = classification_report(y_test, y_pred)
         st.session_state.conf_matrix = confusion_matrix(y_test, y_pred)
 
@@ -430,16 +438,19 @@ if train_btn:
             plt.title("ROC Curve")
             plt.legend(loc="best")
         st.session_state.fig_roc = fig_roc
-        st.success("✅ مدل با موفقیت آموزش داده شد")
-        st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
+        # st.success("✅ مدل با موفقیت آموزش داده شد")
+        # st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
 
-        if "conf_matrix" in st.session_state and "report" in st.session_state and "fig_roc" in st.session_state:
-            st.subheader("📊 Confusion Matrix")
-            st.write(st.session_state.conf_matrix)
-            st.subheader("📋 Classification Report")
-            st.text(st.session_state.report)
-            st.subheader("ROC Curve")
-            st.pyplot(st.session_state.fig_roc)
+if "conf_matrix" in st.session_state and "report" in st.session_state and "fig_roc" in st.session_state:
+    acc = st.session_state.acc
+    st.success("✅ مدل با موفقیت آموزش داده شد")
+    st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
+    st.subheader("📊 Confusion Matrix")
+    st.write(st.session_state.conf_matrix)
+    st.subheader("📋 Classification Report")
+    st.text(st.session_state.report)
+    st.subheader("ROC Curve")
+    st.pyplot(st.session_state.fig_roc)
 ####################
 
 # st.title("انواع مدل بوست 🤖")
@@ -468,8 +479,8 @@ import_streams = [
     "import pandas as pd",
     "import numpy as np",
     "from sklearn.model_selection import train_test_split",
-    "from sklearn.metrics import accuracy_score, classification_report, confusion_matrix"
-]
+    "from sklearn.metrics import accuracy_score, classification_report, confusion_matrix",
+    "from sklearn.neighbors import LocalOutlierFactor"]
 
 if scale_method == "StandardScaler":
     import_streams.append("from sklearn.preprocessing import StandardScaler")
@@ -477,30 +488,60 @@ elif scale_method == "MinMaxScaler":
     import_streams.append("from sklearn.preprocessing import MinMaxScaler")
 
 if model == "Decision Tree":
-    import_streams.append("from sklearn.tree import DecisionTreeClassifier")
+    import_streams.append("from sklearn.tree import DecisionTreeClassifier\n")
 elif model == "Logistic":
-    import_streams.append("from sklearn.linear_model import LogisticRegression")
+    import_streams.append("from sklearn.linear_model import LogisticRegression\n")
 elif model == "SVM":
-    import_streams.append("from sklearn.svm import SVC")
+    import_streams.append("from sklearn.svm import SVC\n")
 elif model == "KNN":
-    import_streams.append("from sklearn.neighbors import KNeighborsClassifier")
+    import_streams.append("from sklearn.neighbors import KNeighborsClassifier\n")
 
 code_main = (
-
     "df = pd.read_csv('mnist_half.csv')\n"
     f"X = df.drop(columns=['{target_column}'])\n"
-    f"y = df['{target_column}']\n"
+    f"y = df['{target_column}']\n\n"
+
 )
+
+if out == "STD + Mean":
+    code_main += (
+        "std = 1.5\n"
+        "mean = X.mean()\n"
+        "std_val = X.std()\n"
+        "upper_bound = mean + std * std_val\n"
+        "lower_bound = mean - std * std_val\n"
+        "outlier_mask = ((X > upper_bound) | (X < lower_bound))\n"
+        "valid_mask = ~outlier_mask.any(axis=1)\n"
+        "X = X[valid_mask]\n"
+        "y = y[valid_mask]\n\n"
+    )
+elif out == "IQR":
+    code_main += (
+        "Q1 = X.quantile(0.25)\n"
+        "Q3 = X.quantile(0.75)\n"
+        "IQR = Q3 - Q1\n"
+        "mask = ~((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)\n"
+        "X = X[mask]\n"
+        "y = y[mask]\n\n"
+    )
+elif out == "LOF":
+    code_main += (
+        "lof = LocalOutlierFactor(n_neighbors=3)\n"
+        "outlier_pred = lof.fit_predict(X)\n"
+        "outlier_index = np.where(outlier_pred == -1)\n"
+        "X = X.drop(index=outlier_index[0])\n"
+        "y = y.drop(index=outlier_index[0])\n\n"
+    )
 
 if scale_method == "StandardScaler":
     code_main += (
         "scaler = StandardScaler()\n"
-        "X = scaler.fit_transform(X)\n"
+        "X = scaler.fit_transform(X)\n\n"
     )
 elif scale_method == "MinMaxScaler":
     code_main += (
         "scaler = MinMaxScaler()\n"
-        "X = scaler.fit_transform(X)\n"
+        "X = scaler.fit_transform(X)\n\n"
     )
 
 code_main += (
@@ -509,7 +550,7 @@ code_main += (
     f"test_size={test_size}, "
     "random_state=42, "
     f"shuffle={shuffle}, "
-    f"stratify={stratify}\n"
+    f"stratify=y if {stratify} else None)\n\n"
 )
 
 if model == "Decision Tree":
@@ -518,7 +559,7 @@ if model == "Decision Tree":
         f"criterion='{criterion}', "
         f"max_depth={max_depth}, "
         f"min_samples_leaf={min_samples_leaf}, "
-        f"min_samples_split={min_samples_split})\n"
+        f"min_samples_split={min_samples_split})\n\n"
     )
 elif model == "Logistic":
     code_main += (
@@ -526,21 +567,21 @@ elif model == "Logistic":
         f"penalty='{penalty}', "
         f"solver='{solver}', "
         f"C={C}, "
-        f"max_iter={max_iter})\n"
+        f"max_iter={max_iter})\n\n"
     )
 elif model == "SVM":
     code_main += (
-        f"model = SVC(C={c}, kernel='{kernel}', gamma='{gamma}')\n"
+        f"model = SVC(C={c}, kernel='{kernel}', gamma='{gamma}')\n\n"
     )
 elif model == "KNN":
     code_main += (
         f"model = KNeighborsClassifier("
-        f"n_neighbors={k}, weights='{weight}', metric='{metric}')\n"
+        f"n_neighbors={k}, weights='{weight}', metric='{metric}')\n\n"
     )
 
 code_main += (
     "model.fit(X_train, y_train)\n"
-    "y_pred = model.predict(X_test)\n"
+    "y_pred = model.predict(X_test)\n\n"
     "print('Accuracy:', accuracy_score(y_test, y_pred))\n"
     "print('Confusion Matrix:\\n', confusion_matrix(y_test, y_pred))\n"
     "print('Classification Report:\\n', classification_report(y_test, y_pred))\n"

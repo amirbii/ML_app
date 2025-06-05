@@ -36,14 +36,27 @@ kaggle_dir = '/home/appuser/.kaggle'
 os.makedirs(kaggle_dir, exist_ok=True)
 
 # ایجاد فایل kaggle.json از Secrets
-kaggle_json_path = os.path.join(kaggle_dir, 'kaggle.json')
-with open(kaggle_json_path, 'w') as f:
-    f.write(f"""
-    {{
-        "username": "{st.secrets.kaggle.username}",
-        "key": "{st.secrets.kaggle.key}"
-    }}
-    """)
+kaggle_json = f"""
+{{
+    "username": "{st.secrets.kaggle.username}",
+    "key": "{st.secrets.kaggle.key}"
+}}
+"""
+
+with open(f'{kaggle_dir}/kaggle.json', 'w') as f:
+    f.write(kaggle_json)
+
+# تنظیم مجوزهای امنیتی
+os.chmod(f'{kaggle_dir}/kaggle.json', 0o600)
+
+# احراز هویت
+try:
+    api = KaggleApi()
+    api.authenticate()
+    st.success("✅ احراز هویت Kaggle با موفقیت انجام شد")
+except Exception as e:
+    st.error(f"❌ خطا در احراز هویت: {str(e)}")
+    st.stop()  # توقف اجرا اگر احراز هویت ناموفق بود
 ####################
 st.title("بارگذاری دیتاست 📁")
 

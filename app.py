@@ -32,30 +32,46 @@ from sklearn.preprocessing import label_binarize
 
 # apply_inline_styles()
 ####################
-kaggle_dir = '/home/appuser/.kaggle'
-os.makedirs(kaggle_dir, exist_ok=True)
+# تنظیم دو مسیر مختلف به صورت همزمان
+paths = [
+    '/home/appuser/.kaggle',  # مسیر پیش‌فرض جدید
+    '/home/appuser/.config/kaggle'  # مسیری که خطا اشاره می‌کند
+]
 
-# ایجاد فایل kaggle.json از Secrets
-kaggle_json = f"""
-{{
-    "username": "{st.secrets.kaggle.username}",
-    "key": "{st.secrets.kaggle.key}"
-}}
-"""
+for path in paths:
+    try:
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, 'kaggle.json'), 'w') as f:
+            f.write(f"""
+            {{
+                "username": "{st.secrets.kaggle.username}",
+                "key": "{st.secrets.kaggle.key}"
+            }}
+            """)
+        os.chmod(os.path.join(path, 'kaggle.json'), 0o600)
+    except Exception as e:
+        st.warning(f"⚠️ خطا در ایجاد فایل در {path}: {str(e)}")
 
-with open(f'{kaggle_dir}/kaggle.json', 'w') as f:
-    f.write(kaggle_json)
-
-# تنظیم مجوزهای امنیتی
-os.chmod(f'{kaggle_dir}/kaggle.json', 0o600)
-
-# احراز هویت
+# احراز هویت با بررسی هر دو مسیر
 try:
     api = KaggleApi()
     api.authenticate()
-    st.success("✅ احراز هویت Kaggle با موفقیت انجام شد")
+    st.success("✅ احراز هویت Kaggle با موفقیت انجام شد!")
+    
+    # تست اتصال
+    datasets = api.dataset_list()
+    st.info(f"📊 تعداد دیتاست‌های موجود: {len(datasets)}")
+    
 except Exception as e:
-    st.error(f"❌ خطا در احراز هویت: {str(e)}")
+    st.error(f"""
+    ❌ خطا در احراز هویت Kaggle:
+    {str(e)}
+    
+    راه‌حل‌های پیشنهادی:
+    1. مطمئن شوید Secrets به درستی تنظیم شده‌اند
+    2. کلید API در حساب Kaggle شما فعال است
+    3. محدودیت‌های IP را بررسی کنید
+    """)
     st.stop()  # توقف اجرا اگر احراز هویت ناموفق بود
 ####################
 st.title("بارگذاری دیتاست 📁")

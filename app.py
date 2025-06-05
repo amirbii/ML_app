@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from kaggle import KaggleApi
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from PIL import Image
 import os
@@ -15,9 +16,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, consensus_score, confusion_matrix, roc_curve, auc
 from sklearn.neighbors import LocalOutlierFactor
 import matplotlib.pyplot as plt
-
-api_k = {"username": "amirbi",
-         "key": "cce234fe761dad172e451eb0141f1143"}
+from sklearn.preprocessing import label_binarize
 
 # def apply_inline_styles():
 # css = """
@@ -54,29 +53,28 @@ elif method == "🌐Github":
         except Exception as e:
             st.error(f"❌ خطا در بارگذاری فایل: {e}")
 elif method == "🌐kaggle":
-    url = st.text_input("link")
+    dataset_input = st.text_input("link")
     if st.button("📥 بارگذاری"):
         try:
-            os.environ['KAGGLE_CONFIG_DIR'] = os.getcwd()
+            os.environ['KAGGLE_USERNAME'] = 'amirbi'
+            os.environ['KAGGLE_KEY'] = 'cce234fe761dad172e451eb0141f1143'
 
-            parts = url.strip("/").split("/")
-            slug = f"{parts[-2]}/{parts[-1]}"
-            zip_name = f"{parts[-1]}.zip"
+            api = KaggleApi()
+            api.authenticate()
 
-            subprocess.run(["kaggle", "datasets", "download", "-d", slug], check=True)
+            download_path = "kaggle_data"
+            os.makedirs(download_path, exist_ok=True)
 
-            with ZipFile(zip_name, 'r') as zip_ref:
-                zip_ref.extractall("kaggle_data")
+            api.dataset_download_files(dataset_input, path=download_path, unzip=True)
 
-            for file in os.listdir("kaggle_data"):
-                if file.endswith(".csv"):
-                    df = pd.read_csv(os.path.join("kaggle_data", file))
-                    st.success("✅ فایل CSV با موفقیت بارگذاری شد")
-                    break
+            csv_files = [file for file in os.listdir(download_path) if file.endswith('.csv')]
+            if csv_files:
+                df = pd.read_csv(os.path.join(download_path, csv_files[0]))
+                st.success("✅ فایل CSV با موفقیت بارگذاری شد")
             else:
-                st.warning("فایل CSV در دیتاست یافت نشد.")
+                st.warning("⚠️ فایل CSV در دیتاست یافت نشد.")
         except Exception as e:
-            st.error(f"خطا در بارگذاری از Kaggle: {e}")
+            st.error(f"❌ خطا در بارگذاری از Kaggle: {e}")
 
 ####################
 if df is not None:
@@ -147,32 +145,7 @@ if "df_out" in st.session_state:
     st.write(df_out.describe())
 
 ####################
-st.header("پیش پردازش 🧹")
-scale_method = st.radio("روش نرمال‌سازی داده", ("None", "StandardScaler", "MinMaxScaler"))
-button1 = st.button(" نرمال‌سازی")
 
-if button1 and scale_method != "None":
-    if 'df_out' in st.session_state:
-        df_out = st.session_state.df_out
-    else:
-        df_out = df
-
-    numeric_cols = df_out.select_dtypes(include=np.number).columns
-
-    if scale_method == "StandardScaler":
-        scaler = StandardScaler()
-    elif scale_method == "MinMaxScaler":
-        scaler = MinMaxScaler()
-
-    scaled_array = scaler.fit_transform(df_out[numeric_cols])
-    df_scaled = pd.DataFrame(scaled_array, columns=numeric_cols)
-
-    st.subheader("داده‌های نرمال‌شده:")
-    st.dataframe(df_scaled.head())
-    st.session_state.df_scaled = df_scaled
-
-elif button1 and scale_method == "None":
-    st.info("نرمال‌سازی انتخاب نشده است")
 ####################
 st.header("تقسیم داده ➗")
 
@@ -202,12 +175,14 @@ if df_final is not None and len(df_final) > 1:
     target_column = st.selectbox("ستون لیبل (y):", df_final.columns)
     button2 = st.button("Train/Test Split")
 
+stratify_value = None
+
 if button2 and target_column is not None:
     X = df_final.drop(columns=[target_column])
     y = df_final[target_column]
 
-    st.write("📊 تعداد نمونه در هر کلاس:")
-    st.write(y.value_counts())
+    # st.write("📊 تعداد نمونه در هر کلاس:")
+    # st.write(y.value_counts())
 
     if stratify and y.value_counts().min() < 2:
         st.error("برای Stratify، هر کلاس باید حداقل ۲ نمونه داشته باشد.")
@@ -229,9 +204,56 @@ if button2 and target_column is not None:
         st.session_state.y_train = y_train
         st.session_state.y_test = y_test
 
-        st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
-        st.write(f"🟩  نمونه آموزش: {X_train.shape[0]} ")
-        st.write(f"🟥  نمونه تست: {X_test.shape[0]} ")
+if 'X_train' in st.session_state and 'X_test' in st.session_state:
+    st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
+    st.write(f"🟩  نمونه آموزش {st.session_state.X_train.shape[0]}")
+    st.write(f"🟥  نمونه تست {st.session_state.X_test.shape[0]}")
+    st.write("📊 تعداد نمونه های آموزش هر کلاس")
+    st.write(st.session_state.y_train.value_counts())
+    st.write("📊 تعداد نمونه های تست هر کلاس")
+    st.write(st.session_state.y_test.value_counts())
+
+
+####################
+st.header("پیش پردازش 🧹")
+scale_method = st.radio("روش نرمال‌سازی داده", ("None", "StandardScaler", "MinMaxScaler"))
+button1 = st.button(" نرمال‌سازی")
+
+if button1 and scale_method != "None":
+    if 'df_out' in st.session_state:
+        df_out = st.session_state.df_out
+    else:
+        df_out = df
+
+    numeric_cols = df_out.select_dtypes(include=np.number).columns
+
+    X = df_out.drop(columns=[target_column])
+    y = df_out[target_column]
+
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y,
+        test_size=test_size,
+        shuffle=shuffle,
+        stratify=stratify_value,
+        random_state=42
+    )
+
+    if scale_method == "StandardScaler":
+        scaler = StandardScaler()
+    elif scale_method == "MinMaxScaler":
+        scaler = MinMaxScaler()
+
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    st.session_state.X_train_scaled = X_train_scaled
+    st.session_state.X_test_scaled = X_test_scaled
+
+    st.subheader("داده‌های نرمال‌شده")
+    st.dataframe(pd.DataFrame(st.session_state.X_train_scaled, columns=X_train.columns).head())
+
+    st.success("✅ داده‌ها با موفقیت نرمال‌سازی شدند.")
 
 ####################
 st.title("انواع مدل 🤖")
@@ -243,7 +265,7 @@ st.markdown("### پارامترها ⚙️")
 if model == "Logistic":
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        penalty = st.selectbox("Penalty", ["l2", "none"])
+        penalty = st.selectbox("Penalty", ["l1", "l2", "elasticnet", "none"])
     with col2:
         solver = st.selectbox("Solver", ["lbfgs", "liblinear", "saga"])
     with col3:
@@ -299,7 +321,7 @@ if auto_btn:
 
         if model == "Logistic":
             param_grid = {
-                'penalty': ['l2', 'none'],
+                'penalty': ["l1", "l2", "elasticnet", "none"],
                 'solver': ['lbfgs', 'liblinear', 'saga'],
                 'C': [0.01, 0.1, 1, 10],
                 'max_iter': [100, 200, 500]
@@ -363,6 +385,7 @@ if train_btn:
         y_pred = clf.predict(X_test)
 
         acc = accuracy_score(y_test, y_pred)
+        st.session_state.acc = acc
         st.success("✅ مدل با موفقیت آموزش داده شد")
         st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
 
@@ -371,24 +394,52 @@ if train_btn:
 
         st.subheader("📋 Classification Report")
         st.text(classification_report(y_test, y_pred))
+        st.session_state.report = classification_report(y_test, y_pred)
+        st.session_state.conf_matrix = confusion_matrix(y_test, y_pred)
 
-        # if len(np.unique(y_test)) == 2:
-        #     if hasattr(clf, "predict_proba"):
-        #         y_score = clf.predict_proba(X_test)[:, 1]
-        #     else:
-        #         y_score = clf.decision_function(X_test)
-        #     fpr, tpr, _ = roc_curve(y_test, y_score)
-        #     auc_score = auc(fpr, tpr)
-        #     plt.figure()
-        #     plt.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
-        #     plt.plot([0, 1], [0, 1], "k--")
-        #     plt.xlabel("False Positive Rate")
-        #     plt.ylabel("True Positive Rate")
-        #     plt.title("ROC Curve")
-        #     plt.legend()
-        #     st.pyplot(plt)
-        # else:
-        #     st.info("ROC Curve فقط برای دسته‌بندی دودویی رسم می‌شود.")
+        fig_roc = plt.figure()
+        if len(np.unique(y_test)) == 2:
+            if hasattr(clf, "predict_proba"):
+                y_score = clf.predict_proba(X_test)[:, 1]
+            else:
+                y_score = clf.decision_function(X_test)
+            fpr, tpr, _ = roc_curve(y_test, y_score)
+            auc_score = auc(fpr, tpr)
+            plt.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
+            plt.plot([0, 1], [0, 1], "k--")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.title("ROC Curve")
+            plt.legend()
+        else:
+            y_test_bin = label_binarize(y_test, classes=np.unique(y_test))
+            if hasattr(clf, "predict_proba"):
+                y_score = clf.predict_proba(X_test)
+            else:
+                y_score = clf.decision_function(X_test)
+                if y_score.ndim == 1:
+                    y_score = y_score.reshape(-1, 1)
+            n_classes = y_test_bin.shape[1]
+            for i in range(n_classes):
+                fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+                auc_score = auc(fpr, tpr)
+                plt.plot(fpr, tpr, lw=2, label=f"class {np.unique(y_test)[i]} (AUC = {auc_score:.2f})")
+            plt.plot([0, 1], [0, 1], "k--")
+            plt.xlabel("FPR")
+            plt.ylabel("TPR")
+            plt.title("ROC Curve")
+            plt.legend(loc="best")
+        st.session_state.fig_roc = fig_roc
+        st.success("✅ مدل با موفقیت آموزش داده شد")
+        st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
+
+        if "conf_matrix" in st.session_state and "report" in st.session_state and "fig_roc" in st.session_state:
+            st.subheader("📊 Confusion Matrix")
+            st.write(st.session_state.conf_matrix)
+            st.subheader("📋 Classification Report")
+            st.text(st.session_state.report)
+            st.subheader("ROC Curve")
+            st.pyplot(st.session_state.fig_roc)
 ####################
 
 # st.title("انواع مدل بوست 🤖")
@@ -458,7 +509,7 @@ code_main += (
     f"test_size={test_size}, "
     "random_state=42, "
     f"shuffle={shuffle}, "
-    f"stratify=y if {stratify} else None)\n"
+    f"stratify={stratify}\n"
 )
 
 if model == "Decision Tree":
@@ -501,7 +552,7 @@ st.header("تولید کد نهایی 🧾")
 if st.button("تولید فایل"):
     with open("code.py", "w", encoding="utf-8") as f:
         f.write(full_code)
-    st.success("کد با موفقیت ساخته و ذخیره شد.")
+    st.success("کد با موفقیت ساخته و ذخیره شد")
     with open("code.py", "rb") as f:
         st.download_button("دانلود فایل", f, file_name="code.py")
 

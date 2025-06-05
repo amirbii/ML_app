@@ -32,6 +32,19 @@ from sklearn.preprocessing import label_binarize
 
 # apply_inline_styles()
 ####################
+kaggle_dir = '/home/appuser/.kaggle'
+os.makedirs(kaggle_dir, exist_ok=True)
+
+# ایجاد فایل kaggle.json از Secrets
+kaggle_json_path = os.path.join(kaggle_dir, 'kaggle.json')
+with open(kaggle_json_path, 'w') as f:
+    f.write(f"""
+    {{
+        "username": "{st.secrets.kaggle.username}",
+        "key": "{st.secrets.kaggle.key}"
+    }}
+    """)
+####################
 st.title("بارگذاری دیتاست 📁")
 
 method = st.radio("روش بارگذاری:", ["📤 CSV", "🌐Github", "🌐kaggle"])

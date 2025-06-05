@@ -33,7 +33,7 @@ import json
 
 # apply_inline_styles()
 ####################
-# تنظیم دو مسیر مختلف به صورت همزمان
+
 os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
 os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
 

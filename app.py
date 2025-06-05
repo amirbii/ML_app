@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from kaggle import KaggleApi
+
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from PIL import Image
 import os

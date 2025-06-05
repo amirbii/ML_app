@@ -33,46 +33,67 @@ from sklearn.preprocessing import label_binarize
 # apply_inline_styles()
 ####################
 # تنظیم دو مسیر مختلف به صورت همزمان
-paths = [
-    '/home/appuser/.kaggle',  # مسیر پیش‌فرض جدید
-    '/home/appuser/.config/kaggle'  # مسیری که خطا اشاره می‌کند
-]
-
-for path in paths:
+def setup_kaggle():
+    """تنظیمات کامل Kaggle API با پشتیبانی از تمام روش‌های احراز هویت"""
     try:
-        os.makedirs(path, exist_ok=True)
-        with open(os.path.join(path, 'kaggle.json'), 'w') as f:
-            f.write(f"""
-            {{
-                "username": "{st.secrets.kaggle.username}",
-                "key": "{st.secrets.kaggle.key}"
-            }}
-            """)
-        os.chmod(os.path.join(path, 'kaggle.json'), 0o600)
+        # 1. روش اول: استفاده از متغیرهای محیطی
+        os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
+        os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
+        
+        # 2. روش دوم: ایجاد فایل kaggle.json در تمام مسیرهای ممکن
+        config_paths = [
+            '/home/appuser/.kaggle',
+            '/home/appuser/.config/kaggle', 
+            '/root/.kaggle',
+            '/root/.config/kaggle'
+        ]
+        
+        kaggle_creds = {
+            "username": st.secrets.kaggle.username,
+            "key": st.secrets.kaggle.key
+        }
+        
+        for path in config_paths:
+            try:
+                os.makedirs(path, exist_ok=True)
+                with open(os.path.join(path, 'kaggle.json'), 'w') as f:
+                    json.dump(kaggle_creds, f)
+                os.chmod(os.path.join(path, 'kaggle.json'), 0o600)
+            except Exception as e:
+                st.warning(f"⚠️ Warning in {path}: {str(e)}")
+        
+        # 3. احراز هویت
+        api = KaggleApi()
+        api.authenticate()
+        return api
+        
     except Exception as e:
-        st.warning(f"⚠️ خطا در ایجاد فایل در {path}: {str(e)}")
+        st.error(f"""
+        ❌ خطای احراز هویت Kaggle:
+        {str(e)}
+        
+        لطفاً بررسی کنید:
+        1. اطلاعات ورود در Secrets صحیح هستند
+        2. کلید API در حساب Kaggle شما فعال است
+        3. محدودیت IP ندارید
+        """)
+        st.stop()
 
-# احراز هویت با بررسی هر دو مسیر
+# استفاده از تابع تنظیمات
 try:
-    api = KaggleApi()
-    api.authenticate()
+    api = setup_kaggle()
     st.success("✅ احراز هویت Kaggle با موفقیت انجام شد!")
     
     # تست اتصال
-    datasets = api.dataset_list()
-    st.info(f"📊 تعداد دیتاست‌های موجود: {len(datasets)}")
-    
+    try:
+        datasets = api.dataset_list(max_results=5)
+        st.info(f"📊 دیتاست‌های موجود: {len(datasets)}")
+    except Exception as e:
+        st.warning(f"⚠️ تست اتصال ناموفق: {str(e)}")
+        
 except Exception as e:
-    st.error(f"""
-    ❌ خطا در احراز هویت Kaggle:
-    {str(e)}
-    
-    راه‌حل‌های پیشنهادی:
-    1. مطمئن شوید Secrets به درستی تنظیم شده‌اند
-    2. کلید API در حساب Kaggle شما فعال است
-    3. محدودیت‌های IP را بررسی کنید
-    """)
-    st.stop()  # توقف اجرا اگر احراز هویت ناموفق بود
+    st.error(f"❌ خطای بحرانی: {str(e)}")
+    st.stop()
 ####################
 st.title("بارگذاری دیتاست 📁")
 

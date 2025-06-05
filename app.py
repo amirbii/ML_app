@@ -17,6 +17,7 @@ from sklearn.metrics import classification_report, accuracy_score, consensus_sco
 from sklearn.neighbors import LocalOutlierFactor
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import label_binarize
+import json
 
 # def apply_inline_styles():
 # css = """
@@ -60,7 +61,7 @@ def setup_kaggle():
                     json.dump(kaggle_creds, f)
                 os.chmod(os.path.join(path, 'kaggle.json'), 0o600)
             except Exception as e:
-                st.warning(f"⚠️ Warning in {path}: {str(e)}")
+                st.warning(f"⚠️ خطا در ایجاد مسیر {path}: {str(e)}")
         
         # 3. احراز هویت
         api = KaggleApi()
@@ -87,7 +88,7 @@ try:
     # تست اتصال
     try:
         datasets = api.dataset_list(max_results=5)
-        st.info(f"📊 دیتاست‌های موجود: {len(datasets)}")
+        st.info(f"📊 تعداد دیتاست‌های موجود: {len(datasets)}")
     except Exception as e:
         st.warning(f"⚠️ تست اتصال ناموفق: {str(e)}")
         

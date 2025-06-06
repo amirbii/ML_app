@@ -85,7 +85,7 @@ elif method == "🌐kaggle":
 if df is not None:
     st.subheader("اطلاعات دیتا 📊")
 
-    st.write(f"🔢 شکل داده: {df.shape[0]} نمونه × {df.shape[1]} ستون")
+    st.write(f" شکل داده: {df.shape[0]} نمونه × {df.shape[1]} ستون")
 
     st.write("انواع داده")
     st.write(df.dtypes)
@@ -248,7 +248,7 @@ if button1 and scale_method != "None":
     st.session_state.X_train_scaled = X_train_scaled
     st.session_state.X_test_scaled = X_test_scaled
     st.session_state.scaled_columns = X_train.columns.tolist()
-    # st.dataframe(pd.DataFrame(st.session_state.X_train_scaled, columns=st.session_state.scaled_columns).head())
+
 
 if 'X_train_scaled' in st.session_state:
     st.success("✅ داده‌ها با موفقیت نرمال‌سازی شدند")
@@ -390,13 +390,7 @@ if train_btn:
         acc = accuracy_score(y_test, y_pred)
         st.session_state.acc = acc
 
-        # st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
 
-        # st.subheader("📊 Confusion Matrix")
-        # st.write(confusion_matrix(y_test, y_pred))
-
-        # st.subheader("📋 Classification Report")
-        # st.text(classification_report(y_test, y_pred))
         st.session_state.report = classification_report(y_test, y_pred)
         st.session_state.conf_matrix = confusion_matrix(y_test, y_pred)
 
@@ -433,23 +427,21 @@ if train_btn:
             plt.title("ROC Curve")
             plt.legend(loc="best")
         st.session_state.fig_roc = fig_roc
-        # st.success("✅ مدل با موفقیت آموزش داده شد")
-        # st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
+
 
 if "conf_matrix" in st.session_state and "report" in st.session_state and "fig_roc" in st.session_state:
     acc = st.session_state.acc
     st.success("✅ مدل با موفقیت آموزش داده شد")
     st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
-    st.subheader("ماتریس آشفتگی📉")
-    st.write(st.session_state.conf_matrix)
     st.subheader("گزارش طبقه‌بندی📋")
     st.text(st.session_state.report)
+    st.subheader("ماتریس آشفتگی📉")
+    st.write(st.session_state.conf_matrix)
     st.subheader("نمودار ROC📊")
     st.pyplot(st.session_state.fig_roc)
+
 ####################
 
-# st.title("انواع مدل بوست 🤖")
-####################
 st.header("تست مدل با عکس 🖼️")
 image_file = st.file_uploader("فایل تست آپلود کنید", type=["jpg", "jpeg", "png"])
 

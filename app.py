@@ -5,9 +5,6 @@ from kaggle import KaggleApi
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from PIL import Image
 import os
-import subprocess
-from zipfile import ZipFile
-import plotly.graph_objects as go
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
@@ -47,6 +44,7 @@ if method == "📤 CSV":
     uploaded_file = st.file_uploader("فایل را انتخاب کنید", type=["csv"])
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
+        st.session_state.dataset_name = uploaded_file.name
         st.success("✅ فایل با موفقیت بارگذاری شد")
 
 elif method == "🌐Github":
@@ -54,6 +52,7 @@ elif method == "🌐Github":
     if st.button("📥 بارگذاری"):
         try:
             df = pd.read_csv(url)
+            st.session_state.dataset_name = url.split("/")[-1]
             st.success("✅ فایل با موفقیت بارگذاری شد")
         except Exception as e:
             st.error(f"❌ خطا در بارگذاری فایل: {e}")
@@ -75,6 +74,7 @@ elif method == "🌐kaggle":
             csv_files = [file for file in os.listdir(download_path) if file.endswith('.csv')]
             if csv_files:
                 df = pd.read_csv(os.path.join(download_path, csv_files[0]))
+                st.session_state.dataset_name = csv_files[0]
                 st.success("فایل  با موفقیت بارگذاری شد ✅")
             else:
                 st.warning(" فایل در دیتاست یافت نشد⚠️")
@@ -93,23 +93,24 @@ if df is not None:
     st.write("آمار توصیفی")
     st.write(df.describe(include='all'))
 
-    ####################
-    st.subheader("حذف داده‌های پرت 🧹")
+####################
+st.subheader("حذف داده‌های پرت 🧹")
 
-    out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
-    button = st.button("حذف")
+out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
+button = st.button("حذف")
 
-    num = df.select_dtypes(include=np.number).columns
-    lenn = len(df)
-    df_out = df.copy()
-    x = df_out[num]
+if df is not None:
 
-    if out == "None" and button:
-        st.session_state.df_out = df
-        st.info("هیچ داده‌ای حذف نشده است")
+    if button:
+        num = df.select_dtypes(include=np.number).columns
+        lenn = len(df)
+        df_out = df.copy()
+        x = df_out[num]
+        if out == "None":
+            st.session_state.df_out = df
+            st.info("هیچ داده‌ای حذف نشده است")
 
-    if out != "None" and button:
-        if out == "STD + Mean":
+        elif out == "STD + Mean":
             std = 1.5
             mean = x.mean()
             std_val = x.std()
@@ -129,7 +130,6 @@ if df is not None:
             df_out = df_out[mask]
 
         elif out == "LOF":
-
             lof = LocalOutlierFactor(n_neighbors=3)
             outlier_pred = lof.fit_predict(x)
             outlier_index = np.where(outlier_pred == -1)
@@ -141,17 +141,14 @@ if df is not None:
         st.session_state.removed = removed
         st.session_state.percent_left = percent_left
 
-if button and "df_out" in st.session_state:
-    removed = st.session_state.get("removed", 0)
-    percent_left = st.session_state.get("percent_left", 100)
+if 'df_out' in st.session_state:
     df_out = st.session_state.df_out
-
-    st.success(f" نمونه حذف شدند: {removed}")
+    removed = st.session_state.removed
+    percent_left = st.session_state.percent_left
+    st.success(f"تعداد نمونه های حذف شده: {removed}")
     st.markdown(f"**درصد نمونه های باقی مانده:** {percent_left:.2f}")
-    st.subheader("دیتای باقی مانده 📉")
-    st.write(f"شکل داده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
+    st.write(f"دیتای باقی مانده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
     st.write(df_out.describe())
-
 ####################
 st.header("تقسیم داده ➗")
 
@@ -187,13 +184,10 @@ if button2 and target_column is not None:
     X = df_final.drop(columns=[target_column])
     y = df_final[target_column]
 
-    # st.write("📊 تعداد نمونه در هر کلاس:")
-    # st.write(y.value_counts())
-
     if stratify and y.value_counts().min() < 2:
-        st.error("هر کلاس باید حداقل ۲ نمونه داشته باشد.")
+        st.error("هر کلاس باید حداقل ۲ نمونه داشته باشد")
     elif stratify and not shuffle:
-        st.error("برای استفاده از Stratify باید گزینه Shuffle نیز فعال باشد.")
+        st.error("برای استفاده از Stratify باید گزینه Shuffle نیز فعال باشد")
     else:
         stratify_value = y if stratify else None
 
@@ -211,7 +205,7 @@ if button2 and target_column is not None:
         st.session_state.y_test = y_test
 
 if 'X_train' in st.session_state and 'X_test' in st.session_state:
-    st.success("✅ داده‌ها با موفقیت تقسیم شدند.")
+    st.success("✅ داده‌ها با موفقیت تقسیم شدند")
     st.write(f"🟩  نمونه آموزش {st.session_state.X_train.shape[0]}")
     st.write(f"🟥  نمونه تست {st.session_state.X_test.shape[0]}")
     st.write("📊 تعداد نمونه های آموزش هر کلاس")
@@ -497,8 +491,14 @@ elif model == "SVM":
 elif model == "KNN":
     import_streams.append("from sklearn.neighbors import KNeighborsClassifier\n")
 
+
+if 'dataset_name' in st.session_state:
+    dataset_name = st.session_state.dataset_name
+else:
+    dataset_name = 'mnist_half.csv'
+
 code_main = (
-    "df = pd.read_csv('mnist_half.csv')\n"
+    f"df = pd.read_csv('{dataset_name}')\n"
     f"X = df.drop(columns=['{target_column}'])\n"
     f"y = df['{target_column}']\n\n"
 

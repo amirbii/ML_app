@@ -20,24 +20,22 @@ from sklearn.preprocessing import label_binarize
 import json
 
 # def apply_inline_styles():
-# css = """
-# * {
-#  direction: rtl;
-#     .st-emotion-cache-13ln4jf{
-# max-width: 100% !important;.
-# }
-# }"""
-
-# st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
-
+#     css = """
+#     * {
+#      direction: rtl;
+#         .st-emotion-cache-13ln4jf{
+#     max-width: 100% !important;.
+#     }
+#     }"""
+#
+#     st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
 
 # apply_inline_styles()
+
 ####################
-
-os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
-os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
-
-      
+# برای streamlit cloud
+# os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
+# os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
 ####################
 st.title("بارگذاری دیتاست 📁")
 
@@ -99,14 +97,14 @@ if df is not None:
     st.subheader("حذف داده‌های پرت 🧹")
 
     out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
-    button = st.button("🚀 اجرای حذف")
+    button = st.button("حذف")
 
     num = df.select_dtypes(include=np.number).columns
     lenn = len(df)
     df_out = df.copy()
     x = df_out[num]
 
-    if out == "None":
+    if out == "None" and button:
         st.session_state.df_out = df
         st.info("هیچ داده‌ای حذف نشده است")
 
@@ -139,13 +137,11 @@ if df is not None:
 
         removed = lenn - len(df_out)
         percent_left = len(df_out) / lenn * 100
-        # st.success(f" نمونه حذف شدند: {removed}")
-        # st.markdown(f"**درصد نمونه های باقی مانده:** {percent_left:.2f}")
         st.session_state.df_out = df_out
         st.session_state.removed = removed
         st.session_state.percent_left = percent_left
 
-if "df_out" in st.session_state:
+if button and "df_out" in st.session_state:
     removed = st.session_state.get("removed", 0)
     percent_left = st.session_state.get("percent_left", 100)
     df_out = st.session_state.df_out
@@ -155,8 +151,6 @@ if "df_out" in st.session_state:
     st.subheader("دیتای باقی مانده 📉")
     st.write(f"شکل داده: {df_out.shape[0]} نمونه × {df_out.shape[1]} ستون")
     st.write(df_out.describe())
-
-####################
 
 ####################
 st.header("تقسیم داده ➗")
@@ -185,7 +179,7 @@ if df_final is not None and len(df_final) > 1:
     st.subheader("🎯 انتخاب ستون هدف")
     df_final = df_final[sorted(df_final.columns, reverse=False)]
     target_column = st.selectbox("ستون لیبل (y):", df_final.columns)
-    button2 = st.button("Train/Test Split")
+    button2 = st.button("تقسیم داده")
 
 stratify_value = None
 
@@ -320,9 +314,9 @@ elif model == "Decision Tree":
 col_train, col_grid = st.columns(2)
 
 with col_grid:
-    auto_btn = st.button("Auto Tuning (Grid Search)")
+    auto_btn = st.button("جستجوی بهترین پارامتر")
 with col_train:
-    train_btn = st.button("Train")
+    train_btn = st.button("آموزش")
 
 if auto_btn:
     if not all(k in st.session_state for k in ["X_train", "y_train"]):
@@ -452,11 +446,11 @@ if "conf_matrix" in st.session_state and "report" in st.session_state and "fig_r
     acc = st.session_state.acc
     st.success("✅ مدل با موفقیت آموزش داده شد")
     st.markdown(f"**🎯 دقت مدل:** {acc * 100:.2f}")
-    st.subheader("📊 Confusion Matrix")
+    st.subheader("ماتریس آشفتگی📉")
     st.write(st.session_state.conf_matrix)
-    st.subheader("📋 Classification Report")
+    st.subheader("گزارش طبقه‌بندی📋")
     st.text(st.session_state.report)
-    st.subheader("ROC Curve")
+    st.subheader("نمودار ROC📊")
     st.pyplot(st.session_state.fig_roc)
 ####################
 

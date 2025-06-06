@@ -40,10 +40,15 @@ method = st.radio("روش بارگذاری:", ["📤 CSV", "🌐Github", "🌐ka
 
 df = None
 
+if 'df' not in st.session_state:
+    st.session_state.df = None
+if 'dataset_name' not in st.session_state:
+    st.session_state.dataset_name = ""
+
 if method == "📤 CSV":
     uploaded_file = st.file_uploader("فایل را انتخاب کنید", type=["csv"])
     if uploaded_file:
-        df = pd.read_csv(uploaded_file)
+        st.session_state.df = pd.read_csv(uploaded_file)
         st.session_state.dataset_name = uploaded_file.name
         st.success("✅ فایل با موفقیت بارگذاری شد")
 
@@ -52,6 +57,7 @@ elif method == "🌐Github":
     if st.button("📥 بارگذاری"):
         try:
             df = pd.read_csv(url)
+            st.session_state.df = pd.read_csv(url)
             st.session_state.dataset_name = url.split("/")[-1]
             st.success("✅ فایل با موفقیت بارگذاری شد")
         except Exception as e:
@@ -69,11 +75,12 @@ elif method == "🌐kaggle":
             download_path = "kaggle_data"
             os.makedirs(download_path, exist_ok=True)
 
-            api.dataset_download_files(dataset_input, path=download_path, unzip=True)
+            with st.spinner("در حال دانلود از Kaggle..."):
+                api.dataset_download_files(dataset_input, path=download_path, unzip=True)
 
             csv_files = [file for file in os.listdir(download_path) if file.endswith('.csv')]
             if csv_files:
-                df = pd.read_csv(os.path.join(download_path, csv_files[0]))
+                st.session_state.df = pd.read_csv(os.path.join(download_path, csv_files[0]))
                 st.session_state.dataset_name = csv_files[0]
                 st.success("فایل  با موفقیت بارگذاری شد ✅")
             else:
@@ -82,32 +89,29 @@ elif method == "🌐kaggle":
             st.error(f"❌ خطا در بارگذاری از Kaggle: {e}")
 
 ####################
-if df is not None:
+if st.session_state.df is not None:
     st.subheader("اطلاعات دیتا 📊")
-
-    st.write(f" شکل داده: {df.shape[0]} نمونه × {df.shape[1]} ستون")
+    st.write(f"شکل داده: {st.session_state.df.shape[0]} نمونه × {st.session_state.df.shape[1]} ستون")
 
     st.write("انواع داده")
-    st.write(df.dtypes)
+    st.write(st.session_state.df.dtypes)
 
     st.write("آمار توصیفی")
-    st.write(df.describe(include='all'))
-
+    st.write(st.session_state.df.describe(include='all'))
 ####################
 st.subheader("حذف داده‌های پرت 🧹")
 
 out = st.radio(" روش های حذف داده", ["None", "STD + Mean", "IQR", "LOF"])
 button = st.button("حذف")
 
-if df is not None:
-
+if st.session_state.df is not None:
     if button:
-        num = df.select_dtypes(include=np.number).columns
-        lenn = len(df)
-        df_out = df.copy()
+        num = st.session_state.df.select_dtypes(include=np.number).columns
+        lenn = len(st.session_state.df)
+        df_out = st.session_state.df.copy()
         x = df_out[num]
         if out == "None":
-            st.session_state.df_out = df
+            st.session_state.df_out = st.session_state.df
             st.info("هیچ داده‌ای حذف نشده است")
 
         elif out == "STD + Mean":
@@ -165,7 +169,7 @@ if 'df_scaled' in st.session_state:
 elif 'df_out' in st.session_state:
     df_final = st.session_state.df_out
 elif 'df' in locals() and df is not None:
-    df_final = df
+    df_final = st.session_state.df
 else:
     df_final = None
 
@@ -222,7 +226,7 @@ if button1 and scale_method != "None":
     if 'df_out' in st.session_state:
         df_out = st.session_state.df_out
     else:
-        df_out = df
+        df_out = st.session_state.df
 
     numeric_cols = df_out.select_dtypes(include=np.number).columns
 

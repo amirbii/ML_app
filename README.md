@@ -1,4 +1,4 @@
-# Streamlit مدل آموزش‌دهنده یادگیری ماشین
+# Streamlit Classifier App
 
 [🌐 **نسخه آنلاین (Streamlit App)**](https://amirbiw.streamlit.app/)
 

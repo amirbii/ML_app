@@ -66,8 +66,6 @@ elif method == "🌐kaggle":
     dataset_input = st.text_input("link")
     if st.button("📥 بارگذاری"):
         try:
-            os.environ['KAGGLE_USERNAME'] = 'amirbi'
-            os.environ['KAGGLE_KEY'] = 'cce234fe761dad172e451eb0141f1143'
 
             api = KaggleApi()
             api.authenticate()

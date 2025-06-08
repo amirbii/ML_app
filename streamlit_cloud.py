@@ -30,9 +30,7 @@ import json
 # apply_inline_styles()
 
 ####################
-# برای streamlit cloud
-os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
-os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
+
 ####################
 st.title("بارگذاری دیتاست 📁")
 
@@ -66,7 +64,7 @@ elif method == "🌐kaggle":
     dataset_input = st.text_input("لینک دیتاست Kaggle (به فرمت: user/dataset)")
     if st.button("📥 بارگذاری"):
         try:
-            
+
             os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
             os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
 

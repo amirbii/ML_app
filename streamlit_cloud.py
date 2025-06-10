@@ -66,7 +66,7 @@ elif method == "🌐kaggle":
     if st.button("📥 بارگذاری"):
         try:
             os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
-            os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key'
+            os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
 
             api = KaggleApi()
             api.authenticate()

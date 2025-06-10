@@ -30,7 +30,8 @@ import json
 # apply_inline_styles()
 
 ####################
-
+# os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
+# os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
 ####################
 st.title("بارگذاری دیتاست 📁")
 
@@ -61,12 +62,11 @@ elif method == "🌐Github":
         except Exception as e:
             st.error(f"❌ خطا در بارگذاری فایل: {e}")
 elif method == "🌐kaggle":
-    dataset_input = st.text_input("لینک دیتاست Kaggle (به فرمت: user/dataset)")
+    dataset_input = st.text_input("link")
     if st.button("📥 بارگذاری"):
         try:
-
             os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
-            os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
+            os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key'
 
             api = KaggleApi()
             api.authenticate()
@@ -77,14 +77,15 @@ elif method == "🌐kaggle":
             with st.spinner("در حال دانلود از Kaggle..."):
                 api.dataset_download_files(dataset_input, path=download_path, unzip=True)
 
-            csv_files = [f for f in os.listdir(download_path) if f.endswith('.csv')]
+            csv_files = [file for file in os.listdir(download_path) if file.endswith('.csv')]
             if csv_files:
                 st.session_state.df = pd.read_csv(os.path.join(download_path, csv_files[0]))
-                st.success("✅ دیتاست با موفقیت بارگذاری شد")
+                st.session_state.dataset_name = csv_files[0]
+                st.success("فایل  با موفقیت بارگذاری شد ✅")
             else:
-                st.warning("⚠️ فایل CSV یافت نشد")
+                st.warning(" فایل در دیتاست یافت نشد⚠️")
         except Exception as e:
-            st.error(f"❌ خطا: {str(e)}")
+            st.error(f"❌ خطا در بارگذاری از Kaggle: {e}")
 
 ####################
 if st.session_state.df is not None:

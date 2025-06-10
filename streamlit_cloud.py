@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from kaggle import KaggleApi
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from PIL import Image
 import os
@@ -67,7 +66,8 @@ elif method == "🌐kaggle":
         try:
             os.environ['KAGGLE_USERNAME'] = st.secrets.kaggle.username
             os.environ['KAGGLE_KEY'] = st.secrets.kaggle.key
-
+            
+            from kaggle import KaggleApi
             api = KaggleApi()
             api.authenticate()
 
